@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parent Dashboard | CampusBus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #alertMap { height: 40vh; width: 100%; border-radius: 1rem; }
+    </style>
+</head>
+<body class="bg-slate-100">
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 w-12 h-12 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-bus text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">CampusBus Parent</h1>
+                    <p id="parentName" class="text-sm text-slate-500">Welcome Parent</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button id="logoutBtn" class="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        
+        <!-- Active Alerts Section -->
+        <div class="mb-8">
+            <div class="flex items-center gap-3 mb-4">
+                <i class="fas fa-bell text-2xl text-red-500"></i>
+                <h2 class="text-3xl font-bold text-slate-800">Active Alerts</h2>
+                <span id="alertCount" class="ml-auto bg-red-500 text-white px-4 py-2 rounded-full font-bold">0</span>
+            </div>
+
+            <div id="alertsList" class="space-y-4">
+                <div class="bg-white rounded-xl shadow-lg p-6 text-center text-slate-500">
+                    <i class="fas fa-check-circle text-4xl text-green-500 mb-3"></i>
+                    <p class="font-bold">All clear! No active alerts.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert Details Card -->
+        <div id="alertDetailsCard" class="bg-white rounded-xl shadow-lg p-6 hidden mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold text-red-600">
+                    <i class="fas fa-warning mr-2"></i>Alert Details
+                </h3>
+                <button id="closeAlertBtn" class="text-slate-400 hover:text-slate-600 text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <p class="text-sm text-slate-500 font-semibold">USER</p>
+                    <p id="alertUser" class="text-lg font-bold text-slate-800">-</p>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500 font-semibold">TIMESTAMP</p>
+                    <p id="alertTime" class="text-lg font-bold text-slate-800">-</p>
+                </div>
+            </div>
+            <div class="mb-4">
+                <p class="text-sm text-slate-500 font-semibold mb-2">LOCATION</p>
+                <div id="alertMap"></div>
+            </div>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p class="text-blue-800 font-semibold">
+                    <i class="fas fa-info-circle mr-2"></i>The college administration has been notified and help is being dispatched.
+                </p>
+            </div>
+        </div>
+
+        <!-- Bus Tracking Info -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h3 class="text-2xl font-bold text-slate-800 mb-4">
+                <i class="fas fa-bus mr-2 text-indigo-600"></i>Bus Information
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="p-4 bg-slate-50 rounded-lg">
+                    <p class="text-sm text-slate-500 font-semibold">BUS NUMBER</p>
+                    <p class="text-lg font-bold text-slate-800">BUS-001</p>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-lg">
+                    <p class="text-sm text-slate-500 font-semibold">ROUTE</p>
+                    <p class="text-lg font-bold text-slate-800">Main Campus → North Gate</p>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-lg">
+                    <p class="text-sm text-slate-500 font-semibold">STATUS</p>
+                    <p class="text-lg font-bold text-green-600">On Time</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const apiBase = (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '') ? 'http://localhost:3000/api' : '/api';
+        let currentAlertMap = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const userRole = localStorage.getItem('userRole');
+            const userName = localStorage.getItem('userName');
+            const userEmail = localStorage.getItem('userEmail');
+
+            if (userRole !== 'parent' || !userEmail) {
+                alert('Unauthorized access! Please login as parent.');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            document.getElementById('parentName').textContent = `Welcome ${userName}!`;
+            loadAlerts();
+
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('userName');
+                localStorage.removeItem('userEmail');
+                localStorage.removeItem('userId');
+                window.location.href = 'login.html';
+            });
+
+            document.getElementById('closeAlertBtn').addEventListener('click', () => {
+                document.getElementById('alertDetailsCard').classList.add('hidden');
+                if (currentAlertMap) {
+                    currentAlertMap.remove();
+                    currentAlertMap = null;
+                }
+            });
+
+            setInterval(loadAlerts, 3000);
+        });
+
+        async function loadAlerts() {
+            try {
+                const response = await fetch(`${apiBase}/panic-alerts?status=active`);
+                
+                if (!response.ok) {
+                    console.error('[PARENT] Alert fetch failed with status:', response.status);
+                    throw new Error('Unable to load alerts. Please try again.');
+                }
+                
+                const activeAlerts = await response.json();
+
+                document.getElementById('alertCount').textContent = activeAlerts.length;
+                const alertsList = document.getElementById('alertsList');
+
+                if (activeAlerts.length === 0) {
+                    alertsList.innerHTML = `
+                        <div class="bg-white rounded-xl shadow-lg p-6 text-center text-slate-500">
+                            <i class="fas fa-check-circle text-4xl text-green-500 mb-3"></i>
+                            <p class="font-bold">All clear! No active alerts.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                alertsList.innerHTML = activeAlerts.map(alert => `
+                    <div class="bg-red-50 border border-red-200 rounded-xl p-4 cursor-pointer hover:shadow-lg transition" onclick="showAlertDetails(${alert.id})">
+                        <div class="flex items-start gap-4">
+                            <div class="text-4xl text-red-600 mt-1">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="font-bold text-red-800 text-lg">${alert.message}</h4>
+                                <p class="text-red-700 mt-1"><i class="fas fa-user mr-2"></i>${alert.userName} (${alert.role.toUpperCase()})</p>
+                                <p class="text-red-600 text-sm mt-1"><i class="fas fa-clock mr-2"></i>${alert.timestamp}</p>
+                                <p class="text-red-600 text-sm mt-1"><i class="fas fa-map-pin mr-2"></i>${alert.locationText}</p>
+                            </div>
+                            <button class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition">View Details</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('[PARENT ERROR]', error.message);
+                document.getElementById('alertsList').innerHTML = '<p class="text-slate-500 text-center py-8 text-red-500"><i class="fas fa-exclamation-circle mr-2"></i>Error loading alerts. Check your connection.</p>';
+            }
+        }
+
+        async function showAlertDetails(alertId) {
+            try {
+                const response = await fetch(`${apiBase}/panic-alerts?status=active`);
+                
+                if (!response.ok) {
+                    console.error('[PARENT] Detail fetch failed:', response.status);
+                    throw new Error('Unable to load alert details.');
+                }
+                
+                const activeAlerts = await response.json();
+
+                const alert = activeAlerts.find(a => a.id === alertId);
+                if (!alert) return;
+
+                document.getElementById('alertUser').textContent = `${alert.userName} (${alert.role.toUpperCase()})`;
+                document.getElementById('alertTime').textContent = alert.timestamp;
+
+                if (currentAlertMap) {
+                    currentAlertMap.remove();
+                }
+
+                currentAlertMap = L.map('alertMap').setView([alert.latitude, alert.longitude], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap contributors',
+                    maxZoom: 19
+                }).addTo(currentAlertMap);
+
+                L.marker([alert.latitude, alert.longitude]).addTo(currentAlertMap)
+                    .bindPopup(`<strong>${alert.userName}</strong><br>Emergency Location`)
+                    .openPopup();
+
+                document.getElementById('alertDetailsCard').classList.remove('hidden');
+                document.getElementById('alertDetailsCard').scrollIntoView({ behavior: 'smooth' });
+            } catch (error) {
+                console.error('[PARENT ERROR] Details:', error.message);
+                alert('Failed to load alert details: ' + error.message);
+            }
+        }
+    </script>
+
+</body>
+</html>

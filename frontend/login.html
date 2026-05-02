@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | CampusBus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-slate-100 h-screen flex items-center justify-center">
+    <div class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md">
+        <div class="text-center mb-8">
+            <div class="bg-indigo-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 rotate-3">
+                <i class="fas fa-bus text-white text-2xl"></i>
+            </div>
+            <h2 class="text-3xl font-black text-slate-800">CampusBus</h2>
+            <p class="text-slate-500 font-medium">Full-Stack Management System</p>
+        </div>
+
+        <!-- Toggle Buttons -->
+        <div class="flex gap-4 mb-8">
+            <button type="button" id="loginTab" class="flex-1 py-3 px-4 rounded-xl font-bold transition-all bg-indigo-600 text-white">
+                <i class="fas fa-sign-in-alt mr-2"></i>Login
+            </button>
+            <button type="button" id="registerTab" class="flex-1 py-3 px-4 rounded-xl font-bold transition-all bg-slate-200 text-slate-700 hover:bg-slate-300">
+                <i class="fas fa-user-plus mr-2"></i>Register
+            </button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="space-y-5">
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Login As</label>
+                <select id="userRole" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50 font-semibold">
+                    <option value="student">Student / Parent</option>
+                    <option value="parent">Parent</option>
+                    <option value="driver">Bus Driver</option>
+                    <option value="admin">Administrator</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
+                <input id="loginEmail" type="email" required placeholder="admin@college.edu" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Password</label>
+                <input id="loginPassword" type="password" required placeholder="••••••••" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-indigo-200">
+                Sign In to Dashboard
+            </button>
+        </form>
+
+        <!-- Registration Form -->
+        <form id="registerForm" class="space-y-5 hidden">
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Register As</label>
+                <select id="registerRole" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50 font-semibold">
+                    <option value="">-- Select Role --</option>
+                    <option value="student">Student</option>
+                    <option value="parent">Parent</option>
+                    <option value="driver">Bus Driver</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
+                <input id="registerName" type="text" required placeholder="John Doe" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
+                <input id="registerEmail" type="email" required placeholder="student@college.edu" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
+                <input id="registerPhone" type="tel" required placeholder="+91 9876543210" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div id="studentFields" class="hidden">
+                <label class="block text-sm font-bold text-slate-700 mb-2">Roll Number / ID</label>
+                <input id="studentId" type="text" placeholder="CS001" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div id="parentFields" class="hidden">
+                <label class="block text-sm font-bold text-slate-700 mb-2">Student Name</label>
+                <input id="childName" type="text" placeholder="Student's Name" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div id="driverFields" class="hidden">
+                <label class="block text-sm font-bold text-slate-700 mb-2">License Number</label>
+                <input id="licenseNumber" type="text" placeholder="DL-1234567" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Password</label>
+                <input id="registerPassword" type="password" required placeholder="••••••••" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Confirm Password</label>
+                <input id="confirmPassword" type="password" required placeholder="••••••••" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div id="termsMessage" class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800 hidden">
+                <i class="fas fa-info-circle mr-2"></i>Your registration will be reviewed by the admin for approval.
+            </div>
+            <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-green-200">
+                <i class="fas fa-user-check mr-2"></i>Submit Registration Request
+            </button>
+        </form>
+    </div>
+    <script src="js/auth.js"></script>
+</body>
+</html>

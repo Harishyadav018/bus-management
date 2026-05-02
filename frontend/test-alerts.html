@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Alerts - College Bus System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gradient-to-br from-indigo-100 to-purple-100 min-h-screen p-8">
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-2xl p-8">
+            <h1 class="text-4xl font-bold text-indigo-900 mb-2">🆘 Test Alert System</h1>
+            <p class="text-gray-600 mb-8">Send test panic alerts to verify the system is working correctly.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <!-- Send Test Alert -->
+                <div class="bg-gradient-to-br from-red-50 to-orange-50 rounded-xl p-6 border border-red-200">
+                    <h2 class="text-2xl font-bold text-red-800 mb-4"><i class="fas fa-siren mr-2"></i>Send Test Alert</h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Alert Sender Name</label>
+                            <input type="text" id="senderName" placeholder="e.g., John Doe" value="Test Student" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Role</label>
+                            <select id="senderRole" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                                <option value="student">Student</option>
+                                <option value="driver">Driver</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Latitude</label>
+                            <input type="number" id="latitude" placeholder="e.g., 17.3850" value="17.3850" step="0.0001"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Longitude</label>
+                            <input type="number" id="longitude" placeholder="e.g., 78.4744" value="78.4744" step="0.0001"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                        </div>
+
+                        <button onclick="sendTestAlert()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition shadow-lg">
+                            <i class="fas fa-paper-plane mr-2"></i>Send Test Alert
+                        </button>
+                    </div>
+                </div>
+
+                <!-- View Active Alerts -->
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+                    <h2 class="text-2xl font-bold text-blue-800 mb-4"><i class="fas fa-list mr-2"></i>Active Alerts</h2>
+                    
+                    <div id="alertsList" class="space-y-3 max-h-96 overflow-y-auto">
+                        <p class="text-center text-gray-500 py-6">Loading alerts...</p>
+                    </div>
+
+                    <button onclick="loadAlerts()" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition">
+                        <i class="fas fa-sync-alt mr-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- API Test Tool -->
+            <div class="bg-gray-900 text-gray-100 rounded-xl p-6 mb-8">
+                <h2 class="text-2xl font-bold mb-4"><i class="fas fa-terminal mr-2"></i>API Test</h2>
+                <p class="text-sm text-gray-400 mb-4">Test API endpoints directly from your browser.</p>
+                
+                <div class="space-y-3">
+                    <button onclick="testAPI('http://localhost:3000/api/routes', 'GET')" class="w-full text-left p-3 bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 font-mono text-sm">
+                        GET <span class="text-green-400">/api/routes</span>
+                    </button>
+                    <button onclick="testAPI('http://localhost:3000/api/panic-alerts?status=active', 'GET')" class="w-full text-left p-3 bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 font-mono text-sm">
+                        GET <span class="text-green-400">/api/panic-alerts?status=active</span>
+                    </button>
+                </div>
+
+                <div id="apiResult" class="mt-4 p-4 bg-black rounded border border-gray-700 hidden">
+                    <p class="text-yellow-400 text-xs mb-2">Response:</p>
+                    <pre id="apiResultText" class="text-green-400 font-mono text-xs overflow-x-auto max-h-48"></pre>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded">
+                <h3 class="text-lg font-bold text-yellow-900 mb-2"><i class="fas fa-lightbulb mr-2"></i>How It Works</h3>
+                <ol class="list-decimal list-inside space-y-2 text-gray-700">
+                    <li>Fill in the alert details (name, role, location)</li>
+                    <li>Click "Send Test Alert"</li>
+                    <li>Alert will be saved to the database</li>
+                    <li>View it in "Active Alerts" section</li>
+                    <li>Check notifications.html to see real-time updates (auto-refreshes every 3 seconds)</li>
+                    <li>Check admin-dashboard.html to see admin notifications</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const apiBase = 'http://localhost:3000/api';
+
+        async function sendTestAlert() {
+            const senderName = document.getElementById('senderName').value;
+            const senderRole = document.getElementById('senderRole').value;
+            const latitude = parseFloat(document.getElementById('latitude').value);
+            const longitude = parseFloat(document.getElementById('longitude').value);
+
+            if (!senderName || !senderRole || isNaN(latitude) || isNaN(longitude)) {
+                alert('Please fill in all fields with valid data');
+                return;
+            }
+
+            const panicAlert = {
+                userId: null,
+                userName: senderName,
+                role: senderRole,
+                message: `🚨 EMERGENCY ALERT: ${senderRole.toUpperCase()} sent an SOS request!`,
+                latitude: latitude,
+                longitude: longitude,
+                locationText: `Latitude: ${latitude.toFixed(4)}, Longitude: ${longitude.toFixed(4)}`
+            };
+
+            console.log('Sending test alert:', panicAlert);
+
+            try {
+                const response = await fetch(`${apiBase}/panic-alerts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(panicAlert)
+                });
+
+                const result = await response.json();
+                console.log('Response:', result);
+
+                if (!response.ok) {
+                    alert('❌ Error: ' + (result.message || 'Failed to send alert'));
+                    return;
+                }
+
+                alert('✅ Test alert sent successfully!\n\n' +
+                    'It should now appear in:\n' +
+                    '- Active Alerts section below\n' +
+                    '- notifications.html\n' +
+                    '- admin-dashboard.html');
+
+                // Refresh the alerts list
+                setTimeout(loadAlerts, 500);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error sending alert: ' + error.message);
+            }
+        }
+
+        async function loadAlerts() {
+            const alertsList = document.getElementById('alertsList');
+            alertsList.innerHTML = '<p class="text-center text-gray-500 py-6">Loading alerts...</p>';
+
+            try {
+                const response = await fetch(`${apiBase}/panic-alerts?status=active`);
+                const alerts = await response.json();
+
+                console.log('Alerts loaded:', alerts);
+
+                if (!response.ok) {
+                    alertsList.innerHTML = '<p class="text-red-600">Error loading alerts</p>';
+                    return;
+                }
+
+                if (!alerts.length) {
+                    alertsList.innerHTML = '<p class="text-center text-gray-500 py-6">No active alerts</p>';
+                    return;
+                }
+
+                alertsList.innerHTML = alerts.map(alert => `
+                    <div class="bg-red-50 border border-red-300 rounded p-3">
+                        <p class="font-bold text-red-800 text-sm">${alert.userName} (${alert.role.toUpperCase()})</p>
+                        <p class="text-red-600 text-xs">${alert.timestamp}</p>
+                        <p class="text-red-700 text-xs mt-1">${alert.locationText}</p>
+                        <button onclick="resolveAlert(${alert.id})" class="mt-2 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded">
+                            Resolve
+                        </button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error:', error);
+                alertsList.innerHTML = '<p class="text-red-600">Error: ' + error.message + '</p>';
+            }
+        }
+
+        async function resolveAlert(alertId) {
+            try {
+                const response = await fetch(`${apiBase}/panic-alerts/${alertId}/resolve`, {
+                    method: 'PATCH'
+                });
+                if (response.ok) {
+                    alert('✅ Alert resolved');
+                    loadAlerts();
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function testAPI(url, method) {
+            const resultDiv = document.getElementById('apiResult');
+            const resultText = document.getElementById('apiResultText');
+
+            try {
+                const response = await fetch(url, { method });
+                const data = await response.json();
+                resultText.textContent = JSON.stringify(data, null, 2);
+                resultDiv.classList.remove('hidden');
+            } catch (error) {
+                resultText.textContent = 'Error: ' + error.message;
+                resultDiv.classList.remove('hidden');
+            }
+        }
+
+        // Load alerts on page load
+        document.addEventListener('DOMContentLoaded', loadAlerts);
+    </script>
+</body>
+</html>

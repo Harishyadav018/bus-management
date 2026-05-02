@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | CampusBus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-slate-50">
+    <div class="flex h-screen">
+        <aside class="w-72 bg-slate-900 text-white p-8 hidden md:flex flex-col">
+            <h1 class="text-2xl font-black mb-10 text-indigo-400 italic text-center">CampusBus</h1>
+            <nav class="space-y-4 flex-1">
+                <a href="admin-dashboard.html" class="block p-4 bg-indigo-600 rounded-2xl font-bold"><i class="fas fa-chart-line mr-3"></i>Dashboard</a>
+                <a href="tracking.html" class="block p-4 hover:bg-slate-800 rounded-2xl font-bold transition"><i class="fas fa-map-marker-alt mr-3"></i>Live Tracking</a>
+                <a href="manage-routes.html" class="block p-4 hover:bg-slate-800 rounded-2xl font-bold transition"><i class="fas fa-route mr-3"></i>Manage Routes</a>
+                <a href="registrations.html" class="block p-4 hover:bg-slate-800 rounded-2xl font-bold transition"><i class="fas fa-user-check mr-3"></i>User Registrations</a>
+                <a href="notifications.html" class="block p-4 hover:bg-slate-800 rounded-2xl font-bold transition"><i class="fas fa-bell mr-3"></i>Notifications</a>
+            </nav>
+            <button id="logoutBtn" class="text-slate-400 hover:text-white text-sm font-bold">Logout System</button>
+        </aside>
+
+        <main class="flex-1 p-10 overflow-y-auto">
+            <div class="flex justify-between items-center mb-10">
+                <div>
+                    <h2 class="text-3xl font-black text-slate-800 tracking-tight">Admin Control Center</h2>
+                    <p id="adminWelcome" class="text-slate-500 mt-2">Overview of live alerts and location updates.</p>
+                </div>
+                <div class="bg-white p-2 px-4 rounded-full shadow-sm border border-slate-200 flex items-center">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
+                    <span class="text-xs font-bold text-slate-500 uppercase">System Online</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                    <p class="text-slate-400 font-bold text-xs uppercase mb-1">Active Panic Alerts</p>
+                    <h4 id="panicCount" class="text-4xl font-black text-rose-600">0</h4>
+                </div>
+                <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                    <p class="text-slate-400 font-bold text-xs uppercase mb-1">Recent Location Updates</p>
+                    <h4 id="locationUpdateCount" class="text-4xl font-black text-indigo-600">0</h4>
+                </div>
+                <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                    <p class="text-slate-400 font-bold text-xs uppercase mb-1">Pending Registrations</p>
+                    <h4 id="pendingCount" class="text-4xl font-black text-slate-800">0</h4>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+                <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 bg-rose-50 border-b border-rose-100 font-bold text-rose-800">
+                        <i class="fas fa-exclamation-triangle mr-2"></i> Emergency Panic Alerts
+                    </div>
+                    <div id="adminPanicAlerts" class="p-6 max-h-96 overflow-y-auto">
+                        <p class="text-center text-slate-400 italic">No active panic alerts.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 bg-blue-50 border-b border-blue-100 font-bold text-blue-800">
+                        <i class="fas fa-map-pin mr-2"></i> Recent Location Updates
+                    </div>
+                    <div id="adminLocationUpdates" class="p-6 max-h-96 overflow-y-auto">
+                        <p class="text-center text-slate-400 italic">No recent location updates.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const apiBase = (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '') ? 'http://localhost:3000/api' : '/api';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const userRole = localStorage.getItem('userRole');
+            const userName = localStorage.getItem('userName');
+            const userEmail = localStorage.getItem('userEmail');
+
+            if (userRole !== 'admin' || !userEmail) {
+                alert('Unauthorized access! Please login as admin.');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            document.getElementById('adminWelcome').textContent = `Hello ${userName}, here is your current system overview.`;
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('userName');
+                localStorage.removeItem('userEmail');
+                localStorage.removeItem('userId');
+                window.location.href = 'login.html';
+            });
+
+            loadAdminData();
+            setInterval(loadAdminData, 5000);
+        });
+
+        async function loadAdminData() {
+            try {
+                const [panicResp, updatesResp, pendingResp] = await Promise.all([
+                    fetch(`${apiBase}/panic-alerts?status=active`),
+                    fetch(`${apiBase}/location-updates`),
+                    fetch(`${apiBase}/registrations?status=pending`)
+                ]);
+                
+                if (!panicResp.ok || !updatesResp.ok || !pendingResp.ok) {
+                    throw new Error('One or more API endpoints returned an error');
+                }
+                
+                const panicAlerts = await panicResp.json();
+                const locationUpdates = await updatesResp.json();
+                const pendingRegistrations = await pendingResp.json();
+
+                console.log('[ADMIN] Loaded data:', {
+                    alerts: panicAlerts.length,
+                    updates: locationUpdates.length,
+                    pending: pendingRegistrations.length
+                });
+
+                document.getElementById('panicCount').textContent = Array.isArray(panicAlerts) ? panicAlerts.length : 0;
+                document.getElementById('locationUpdateCount').textContent = Array.isArray(locationUpdates) ? locationUpdates.length : 0;
+                document.getElementById('pendingCount').textContent = Array.isArray(pendingRegistrations) ? pendingRegistrations.length : 0;
+
+                renderPanicAlerts(panicAlerts);
+                renderLocationUpdates(locationUpdates);
+            } catch (error) {
+                console.error('[ADMIN ERROR]', error.message);
+                console.warn('[ADMIN] Failed to load dashboard data');
+            }
+        }
+
+        function renderPanicAlerts(alerts) {
+            const container = document.getElementById('adminPanicAlerts');
+            if (!alerts || alerts.length === 0) {
+                container.innerHTML = '<p class="text-center text-slate-400 italic py-8">✅ No active panic alerts. All clear!</p>';
+                return;
+            }
+
+            console.log('[ADMIN] Rendering', alerts.length, 'alerts');
+
+            container.innerHTML = alerts.map(alert => `
+                <div class="mb-4 p-4 bg-red-50 border-l-4 border-red-600 rounded-lg shadow">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <p class="font-bold text-red-800 text-lg">🚨 ${alert.userName} (${alert.role.toUpperCase()})</p>
+                            <p class="text-sm text-red-700 mt-2">${alert.message}</p>
+                            <p class="text-xs text-red-600 mt-2">⏰ ${alert.timestamp}</p>
+                            <p class="text-xs text-red-600 mt-1">📍 ${alert.locationText}</p>
+                        </div>
+                        <div class="ml-4">
+                            <button onclick="resolveAlertAsAdmin(${alert.id})" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition text-sm">
+                                Resolve
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderLocationUpdates(updates) {
+            const container = document.getElementById('adminLocationUpdates');
+            if (!updates || updates.length === 0) {
+                container.innerHTML = '<p class="text-center text-slate-400 italic">No recent location updates.</p>';
+                return;
+            }
+
+            container.innerHTML = updates.slice(0, 5).map(update => `
+                <div class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p class="font-bold text-blue-800">${update.stop} ${update.stopNumber ? `(Stop ${update.stopNumber})` : ''}</p>
+                    <p class="text-sm text-blue-700">${update.timestamp}</p>
+                    <p class="text-xs text-blue-600 mt-1">${update.locationText}</p>
+                </div>
+            `).join('');
+        }
+
+        async function resolveAlertAsAdmin(alertId) {
+            try {
+                const response = await fetch(`${apiBase}/panic-alerts/${alertId}/resolve`, {
+                    method: 'PATCH'
+                });
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    alert('Error: ' + (result.message || 'Failed to resolve alert'));
+                    return;
+                }
+
+                console.log('[ADMIN] Alert resolved:', alertId);
+                alert('✅ Alert marked as resolved');
+                loadAdminData();
+            } catch (error) {
+                console.error('[ADMIN ERROR] Resolve failed:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

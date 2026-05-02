@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications - College Bus System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-slate-50">
+
+    <div class="flex h-screen">
+        <aside class="w-64 bg-indigo-900 text-white p-6 hidden md:block">
+            <h2 class="text-2xl font-bold mb-8 italic">CampusBus</h2>
+            <nav class="space-y-4">
+                <a href="admin-dashboard.html" class="block p-3 hover:bg-indigo-800 rounded-lg"><i class="fas fa-home mr-2"></i> Dashboard</a>
+                <a href="tracking.html" class="block p-3 hover:bg-indigo-800 rounded-lg"><i class="fas fa-map-marker-alt mr-2"></i> Live Tracking</a>
+                <a href="manage-routes.html" class="block p-3 hover:bg-indigo-800 rounded-lg"><i class="fas fa-route mr-2"></i> Manage Routes</a>
+                <a href="notifications.html" class="block p-3 bg-indigo-800 rounded-lg"><i class="fas fa-bell mr-2"></i> Notifications</a>
+            </nav>
+        </aside>
+
+        <main class="flex-1 p-8 overflow-y-auto">
+            <header class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800">Notification Center</h1>
+                    <p class="text-gray-500">Real-time alerts for delays and emergencies.</p>
+                </div>
+                <button id="markAllReadBtn" class="bg-white border border-gray-200 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50">
+                    Mark all as read
+                </button>
+            </header>
+
+            <div id="notificationsList" class="max-w-4xl space-y-4">
+                <p class="text-slate-500 text-center py-8">Loading notifications...</p>
+            </div>
+
+            <button onclick="triggerPanic()" class="fixed bottom-8 right-8 w-16 h-16 bg-red-600 text-white rounded-full shadow-2xl flex items-center justify-center z-50">
+                <i class="fas fa-exclamation-triangle"></i>
+            </button>
+        </main>
+    </div>
+
+    <script src="js/panic.js"></script>
+    <script>
+        const apiBase = (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '') ? 'http://localhost:3000/api' : '/api';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadNotifications();
+            document.getElementById('markAllReadBtn').addEventListener('click', markAllAsRead);
+            
+            // Auto-refresh notifications every 3 seconds
+            setInterval(loadNotifications, 3000);
+        });
+
+        async function loadNotifications() {
+            const list = document.getElementById('notificationsList');
+            list.innerHTML = '<p class="text-slate-500 text-center py-8">Loading notifications...</p>';
+
+            try {
+                const response = await fetch(`${apiBase}/panic-alerts?status=active`);
+                
+                if (!response.ok) {
+                    console.error('[NOTIFICATIONS] Fetch failed:', response.status);
+                    throw new Error('Unable to load notifications.');
+                }
+                
+                const alerts = await response.json();
+
+                if (!alerts.length) {
+                    list.innerHTML = '<p class="text-slate-500 text-center py-8">No active notifications at the moment.</p>';
+                    return;
+                }
+
+                list.innerHTML = alerts.map(alert => `
+                    <div class="bg-red-50 border-l-4 border-red-600 p-6 rounded-xl shadow-sm flex flex-col gap-4">
+                        <div class="flex justify-between items-start gap-4">
+                            <div>
+                                <h3 class="font-bold text-red-800 text-lg">${alert.message}</h3>
+                                <p class="text-red-700 mt-2"><i class="fas fa-user mr-2"></i>${alert.userName} (${alert.role.toUpperCase()})</p>
+                                <p class="text-red-600 text-sm mt-1"><i class="fas fa-clock mr-2"></i>${alert.timestamp}</p>
+                                <p class="text-red-600 text-sm mt-1"><i class="fas fa-map-pin mr-2"></i>${alert.locationText}</p>
+                            </div>
+                            <button class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition" onclick="resolveAlert(${alert.id})">Resolve</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('[NOTIFICATIONS ERROR]', error.message);
+                list.innerHTML = '<p class="text-red-500 text-center py-8">Unable to load notifications.</p>';
+            }
+        }
+
+        async function resolveAlert(alertId) {
+            try {
+                const response = await fetch(`${apiBase}/panic-alerts/${alertId}/resolve`, {
+                    method: 'PATCH'
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.message || 'Unable to resolve alert.');
+                loadNotifications();
+            } catch (error) {
+                console.error('[NOTIFICATIONS ERROR]', error.message);
+                alert(error.message);
+            }
+        }
+
+        async function markAllAsRead() {
+            try {
+                const response = await fetch(`${apiBase}/panic-alerts?status=active`);
+                const alerts = await response.json();
+                if (!response.ok) throw new Error(alerts.message || 'Unable to load notifications.');
+
+                await Promise.all(alerts.map(alert => fetch(`${apiBase}/panic-alerts/${alert.id}/resolve`, { method: 'PATCH' })));
+                loadNotifications();
+            } catch (error) {
+                console.error('[NOTIFICATIONS ERROR]', error.message);
+                alert(error.message);
+            }
+        }
+    </script>
+</body>
+</html>

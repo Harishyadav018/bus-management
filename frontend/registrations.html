@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Registrations | CampusBus Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-slate-100">
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 w-12 h-12 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-bus text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">CampusBus</h1>
+                    <p class="text-sm text-slate-500">Registration Management</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button id="logoutBtn" class="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        
+        <!-- Tabs -->
+        <div class="flex gap-4 mb-8">
+            <button class="tabBtn px-6 py-3 rounded-lg font-bold transition-all bg-indigo-600 text-white" data-tab="pending">
+                <i class="fas fa-hourglass-half mr-2"></i>Pending <span id="pendingCount" class="ml-2 bg-red-500 px-3 py-1 rounded-full">0</span>
+            </button>
+            <button class="tabBtn px-6 py-3 rounded-lg font-bold transition-all bg-slate-200 text-slate-700 hover:bg-slate-300" data-tab="approved">
+                <i class="fas fa-check-circle mr-2"></i>Approved <span id="approvedCount" class="ml-2 bg-green-500 px-3 py-1 rounded-full text-white">0</span>
+            </button>
+            <button class="tabBtn px-6 py-3 rounded-lg font-bold transition-all bg-slate-200 text-slate-700 hover:bg-slate-300" data-tab="rejected">
+                <i class="fas fa-times-circle mr-2"></i>Rejected <span id="rejectedCount" class="ml-2 bg-gray-500 px-3 py-1 rounded-full text-white">0</span>
+            </button>
+        </div>
+
+        <!-- Pending Registrations -->
+        <div id="pendingTab" class="tabContent">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-slate-800 mb-6">
+                    <i class="fas fa-user-clock mr-2 text-orange-500"></i>Pending Registration Requests
+                </h2>
+                <div id="pendingList" class="space-y-4">
+                    <p class="text-slate-500 text-center py-8">No pending registrations</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Approved Registrations -->
+        <div id="approvedTab" class="tabContent hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-slate-800 mb-6">
+                    <i class="fas fa-check-circle mr-2 text-green-500"></i>Approved Users
+                </h2>
+                <div id="approvedList" class="space-y-4">
+                    <p class="text-slate-500 text-center py-8">No approved registrations</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rejected Registrations -->
+        <div id="rejectedTab" class="tabContent hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-slate-800 mb-6">
+                    <i class="fas fa-times-circle mr-2 text-red-500"></i>Rejected Registrations
+                </h2>
+                <div id="rejectedList" class="space-y-4">
+                    <p class="text-slate-500 text-center py-8">No rejected registrations</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const apiBase = (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '') ? 'http://localhost:3000/api' : '/api';
+            const userRole = localStorage.getItem('userRole');
+            const userEmail = localStorage.getItem('userEmail');
+
+            if (userRole !== 'admin' || !userEmail) {
+                alert('Unauthorized access! Please login as admin.');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            loadRegistrations();
+
+            document.querySelectorAll('.tabBtn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const tabName = e.currentTarget.dataset.tab;
+                    document.querySelectorAll('.tabContent').forEach(tab => tab.classList.add('hidden'));
+                    document.getElementById(tabName + 'Tab').classList.remove('hidden');
+                    document.querySelectorAll('.tabBtn').forEach(b => {
+                        b.classList.remove('bg-indigo-600', 'text-white');
+                        b.classList.add('bg-slate-200', 'text-slate-700');
+                    });
+                    e.currentTarget.classList.add('bg-indigo-600', 'text-white');
+                    e.currentTarget.classList.remove('bg-slate-200', 'text-slate-700');
+                });
+            });
+
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('userName');
+                localStorage.removeItem('userEmail');
+                window.location.href = 'login.html';
+            });
+
+            async function loadRegistrations() {
+                try {
+                    const response = await fetch(`${apiBase}/registrations?status=pending`);
+                    const pending = await response.json();
+                    const approvedResponse = await fetch(`${apiBase}/registrations?status=approved`);
+                    const approved = await approvedResponse.json();
+                    const rejectedResponse = await fetch(`${apiBase}/registrations?status=rejected`);
+                    const rejected = await rejectedResponse.json();
+
+                    document.getElementById('pendingCount').textContent = pending.length;
+                    document.getElementById('approvedCount').textContent = approved.length;
+                    document.getElementById('rejectedCount').textContent = rejected.length;
+
+                    displayRegistrations('pending', pending);
+                    displayRegistrations('approved', approved);
+                    displayRegistrations('rejected', rejected);
+                } catch (error) {
+                    console.error(error);
+                    alert('Unable to load registrations.');
+                }
+            }
+
+            function displayRegistrations(status, registrations) {
+                const listId = status + 'List';
+                const listElement = document.getElementById(listId);
+
+                if (registrations.length === 0) {
+                    listElement.innerHTML = `<p class="text-slate-500 text-center py-8">No ${status} registrations</p>`;
+                    return;
+                }
+
+                listElement.innerHTML = registrations.map(reg => `
+                    <div class="border border-slate-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <p class="text-sm text-slate-500 font-semibold">NAME</p>
+                                <p class="text-lg font-bold text-slate-800">${reg.name}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-slate-500 font-semibold">EMAIL</p>
+                                <p class="text-lg font-bold text-slate-800">${reg.email}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-slate-500 font-semibold">PHONE</p>
+                                <p class="text-lg font-bold text-slate-800">${reg.phone || '-'} </p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-slate-500 font-semibold">ROLE</p>
+                                <span class="inline-block px-3 py-1 rounded-full text-white font-bold ${reg.role === 'student' ? 'bg-blue-500' : reg.role === 'parent' ? 'bg-purple-500' : 'bg-green-500'}">
+                                    ${reg.role === 'student' ? '<i class="fas fa-book mr-2"></i>Student' : reg.role === 'parent' ? '<i class="fas fa-users mr-2"></i>Parent' : '<i class="fas fa-bus mr-2"></i>Driver'}
+                                </span>
+                            </div>
+                            ${reg.role === 'student' ? `
+                                <div>
+                                    <p class="text-sm text-slate-500 font-semibold">ROLL/ID</p>
+                                    <p class="text-lg font-bold text-slate-800">${reg.studentId || '-'}</p>
+                                </div>
+                            ` : ''}
+                            ${reg.role === 'parent' ? `
+                                <div>
+                                    <p class="text-sm text-slate-500 font-semibold">CHILD NAME</p>
+                                    <p class="text-lg font-bold text-slate-800">${reg.childName || '-'}</p>
+                                </div>
+                            ` : ''}
+                            ${reg.role === 'driver' ? `
+                                <div>
+                                    <p class="text-sm text-slate-500 font-semibold">LICENSE</p>
+                                    <p class="text-lg font-bold text-slate-800">${reg.licenseNumber || '-'}</p>
+                                </div>
+                            ` : ''}
+                            <div>
+                                <p class="text-sm text-slate-500 font-semibold">REGISTERED</p>
+                                <p class="text-lg font-bold text-slate-800">${new Date(reg.createdAt).toLocaleString()}</p>
+                            </div>
+                        </div>
+                        ${status === 'pending' ? `
+                            <div class="flex gap-3 pt-4 border-t border-slate-200">
+                                <button class="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg transition approveBtn" data-id="${reg.id}">
+                                    <i class="fas fa-check mr-2"></i>Approve
+                                </button>
+                                <button class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg transition rejectBtn" data-id="${reg.id}">
+                                    <i class="fas fa-times mr-2"></i>Reject
+                                </button>
+                            </div>
+                        ` : status === 'rejected' && reg.rejectionReason ? `
+                            <div class="mt-4 p-4 bg-red-50 border border-red-100 rounded-lg text-red-700">
+                                <strong>Rejection Reason:</strong> ${reg.rejectionReason}
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+
+                if (status === 'pending') {
+                    document.querySelectorAll('.approveBtn').forEach(btn => {
+                        btn.addEventListener('click', () => approveRegistration(btn.dataset.id));
+                    });
+                    document.querySelectorAll('.rejectBtn').forEach(btn => {
+                        btn.addEventListener('click', () => rejectRegistration(btn.dataset.id));
+                    });
+                }
+            }
+
+            async function approveRegistration(userId) {
+                try {
+                    const response = await fetch(`${apiBase}/registrations/${userId}/status`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: 'approved' })
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.message || 'Approval failed');
+                    alert(result.message);
+                    loadRegistrations();
+                } catch (error) {
+                    console.error(error);
+                    alert(error.message);
+                }
+            }
+
+            async function rejectRegistration(userId) {
+                const reason = prompt('Enter reason for rejection (optional):');
+                try {
+                    const response = await fetch(`${apiBase}/registrations/${userId}/status`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: 'rejected', rejectionReason: reason || 'No reason provided' })
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.message || 'Rejection failed');
+                    alert(result.message);
+                    loadRegistrations();
+                } catch (error) {
+                    console.error(error);
+                    alert(error.message);
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>
