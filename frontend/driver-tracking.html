@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver GPS Tracking | CampusBus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-active { background-color: #10b981; }
+        .status-inactive { background-color: #6b7280; }
+        .status-error { background-color: #ef4444; }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div class="p-6 max-w-4xl mx-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-black text-slate-800">Driver GPS Tracking</h1>
+            <a href="index.html" class="text-indigo-600 font-bold"><i class="fas fa-arrow-left mr-2"></i>Back</a>
+        </div>
+
+        <!-- Driver Info -->
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 mb-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">Driver: John Smith</h3>
+                    <p class="text-slate-600">Bus: A-001 | Route: Main Campus</p>
+                </div>
+                <div class="text-right">
+                    <div class="flex items-center mb-2">
+                        <span id="statusIndicator" class="status-indicator status-inactive"></span>
+                        <span id="statusText" class="text-sm font-medium text-slate-600">Inactive</span>
+                    </div>
+                    <button id="startStopBtn" onclick="toggleTracking()" class="bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-700 transition">
+                        <i class="fas fa-play mr-2"></i>Start Tracking
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tracking Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                <div class="flex items-center">
+                    <div class="bg-blue-100 p-3 rounded-full mr-4">
+                        <i class="fas fa-map-marker-alt text-blue-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-sm font-bold uppercase">Current Location</p>
+                        <p id="currentLocation" class="text-slate-800 font-bold">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                <div class="flex items-center">
+                    <div class="bg-green-100 p-3 rounded-full mr-4">
+                        <i class="fas fa-clock text-green-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-sm font-bold uppercase">Last Update</p>
+                        <p id="lastUpdate" class="text-slate-800 font-bold">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                <div class="flex items-center">
+                    <div class="bg-purple-100 p-3 rounded-full mr-4">
+                        <i class="fas fa-bullseye text-purple-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-sm font-bold uppercase">Accuracy</p>
+                        <p id="accuracy" class="text-slate-800 font-bold">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs -->
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <h3 class="text-lg font-bold text-slate-800 mb-4">Activity Log</h3>
+            <div id="activityLog" class="space-y-2 max-h-64 overflow-y-auto">
+                <p class="text-slate-500 text-sm">No activity yet...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Driver configuration
+        const DRIVER_ID = 'driver_001'; // In production, get from authentication
+        const UPDATE_INTERVAL = 3000; // 3 seconds
+        const BACKEND_URL = 'http://localhost:3000';
+
+        let isTracking = false;
+        let watchId = null;
+        let lastUpdate = null;
+
+        // DOM elements
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const startStopBtn = document.getElementById('startStopBtn');
+        const currentLocation = document.getElementById('currentLocation');
+        const lastUpdateEl = document.getElementById('lastUpdate');
+        const accuracyEl = document.getElementById('accuracy');
+        const activityLog = document.getElementById('activityLog');
+
+        // Add log entry
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('p');
+            logEntry.className = `text-sm ${type === 'error' ? 'text-red-600' : type === 'success' ? 'text-green-600' : 'text-slate-600'}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            activityLog.insertBefore(logEntry, activityLog.firstChild);
+
+            // Keep only last 20 entries
+            while (activityLog.children.length > 20) {
+                activityLog.removeChild(activityLog.lastChild);
+            }
+        }
+
+        // Update UI status
+        function updateStatus(active, text) {
+            statusIndicator.className = `status-indicator ${active ? 'status-active' : 'status-inactive'}`;
+            statusText.textContent = text;
+        }
+
+        // Send location to backend
+        async function sendLocation(position) {
+            try {
+                const { latitude, longitude, accuracy } = position.coords;
+
+                // Ignore low accuracy (>50 meters)
+                if (accuracy > 50) {
+                    addLog(`Location accuracy too low: ${accuracy.toFixed(1)}m`, 'error');
+                    return;
+                }
+
+                const response = await fetch(`${BACKEND_URL}/api/update-location`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        driverId: DRIVER_ID,
+                        latitude,
+                        longitude,
+                        accuracy,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    lastUpdate = new Date();
+                    updateLocationDisplay(latitude, longitude, accuracy);
+                    addLog(`Location sent: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`, 'success');
+                } else {
+                    addLog(`Failed to send location: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                addLog(`Network error: ${error.message}`, 'error');
+            }
+        }
+
+        // Update location display
+        function updateLocationDisplay(lat, lng, acc) {
+            currentLocation.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            lastUpdateEl.textContent = lastUpdate ? lastUpdate.toLocaleTimeString() : '-';
+            accuracyEl.textContent = acc ? `${acc.toFixed(1)}m` : '-';
+        }
+
+        // Handle geolocation errors
+        function handleLocationError(error) {
+            let message = 'Unknown location error';
+
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    message = 'Location permission denied by user';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message = 'Location information unavailable';
+                    break;
+                case error.TIMEOUT:
+                    message = 'Location request timed out';
+                    break;
+            }
+
+            addLog(message, 'error');
+            updateStatus(false, 'Error');
+        }
+
+        // Start GPS tracking
+        function startTracking() {
+            if (!navigator.geolocation) {
+                addLog('Geolocation is not supported by this browser', 'error');
+                return;
+            }
+
+            addLog('Requesting location permission...');
+
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 30000
+            };
+
+            // Use watchPosition for continuous updates
+            watchId = navigator.geolocation.watchPosition(
+                sendLocation,
+                handleLocationError,
+                options
+            );
+
+            isTracking = true;
+            updateStatus(true, 'Active');
+            startStopBtn.innerHTML = '<i class="fas fa-stop mr-2"></i>Stop Tracking';
+            startStopBtn.className = startStopBtn.className.replace('bg-blue-600', 'bg-red-600').replace('hover:bg-blue-700', 'hover:bg-red-700');
+        }
+
+        // Stop GPS tracking
+        function stopTracking() {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+
+            isTracking = false;
+            updateStatus(false, 'Inactive');
+            startStopBtn.innerHTML = '<i class="fas fa-play mr-2"></i>Start Tracking';
+            startStopBtn.className = startStopBtn.className.replace('bg-red-600', 'bg-blue-600').replace('hover:bg-red-700', 'hover:bg-blue-700');
+            addLog('Tracking stopped');
+        }
+
+        // Toggle tracking
+        function toggleTracking() {
+            if (isTracking) {
+                stopTracking();
+            } else {
+                startTracking();
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            addLog('Driver tracking module initialized');
+            updateStatus(false, 'Inactive');
+        });
+
+        // Handle page visibility changes (pause/resume tracking)
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && isTracking) {
+                addLog('Page hidden - tracking paused');
+            } else if (!document.hidden && isTracking) {
+                addLog('Page visible - tracking resumed');
+            }
+        });
+    </script>
+</body>
+</html>

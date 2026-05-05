@@ -3,14 +3,36 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const { initDatabase, getPool } = require('./db');
 const dotenv = require('dotenv');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 
 dotenv.config();
 
 const app = express();
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
 const port = process.env.PORT || 3000;
 
 app.use(cors({ origin: true }));
 app.use(express.json());
+
+// In-memory storage for driver locations (use Redis for production)
+const driverLocations = new Map();
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
 
 function handleServerError(res, error) {
   console.error(error);
@@ -230,9 +252,64 @@ app.get('/api/location-updates', async (req, res) => {
   }
 });
 
+// GPS Tracking Endpoints
+app.post('/api/update-location', async (req, res) => {
+  try {
+    const { driverId, latitude, longitude, accuracy, timestamp } = req.body;
+
+    // Basic validation
+    if (!driverId || latitude == null || longitude == null) {
+      return res.status(400).json({ message: 'driverId, latitude, and longitude are required.' });
+    }
+
+    // Mock authentication - in production, verify JWT token
+    if (!driverId || typeof driverId !== 'string') {
+      return res.status(401).json({ message: 'Invalid driver authentication.' });
+    }
+
+    // Ignore low accuracy locations (>50 meters)
+    if (accuracy && accuracy > 50) {
+      return res.status(200).json({ message: 'Location accuracy too low, update ignored.' });
+    }
+
+    // Store in memory (use Redis for production scalability)
+    const locationData = {
+      driverId,
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
+      accuracy: accuracy ? parseFloat(accuracy) : null,
+      timestamp: timestamp || new Date().toISOString(),
+      lastUpdate: Date.now()
+    };
+
+    driverLocations.set(driverId, locationData);
+
+    // Broadcast to all connected clients
+    io.emit('locationUpdate', locationData);
+
+    console.log(`[GPS UPDATE] Driver ${driverId}: ${latitude}, ${longitude}`);
+
+    return res.status(200).json({ message: 'Location updated successfully.' });
+  } catch (error) {
+    console.error('[GPS UPDATE ERROR]', error);
+    return handleServerError(res, error);
+  }
+});
+
+// Get current locations of all drivers
+app.get('/api/driver-locations', (req, res) => {
+  try {
+    const locations = Array.from(driverLocations.values());
+    return res.json({ locations });
+  } catch (error) {
+    console.error('[GET LOCATIONS ERROR]', error);
+    return handleServerError(res, error);
+  }
+});
+
 initDatabase()
   .then(() => {
-    app.listen(port, () => {
+    server.listen(port, () => {
       console.log(`Backend running on http://localhost:${port}`);
     });
   })

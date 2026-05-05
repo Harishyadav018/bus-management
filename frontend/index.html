@@ -3,21 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="College Bus Management System - BV Raju Institute of Technology">
+    <meta name="keywords" content="college bus, transportation, BV Raju Institute, student safety">
     <title>College Bus Management System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .bg-fallback {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    </style>
 </head>
 <body class="bg-gradient-to-b from-blue-50 to-white">
-    <div class="relative min-h-screen bg-cover bg-center" style="background-image: url('images/bvrit.jpg');">
+    <div class="relative min-h-screen bg-cover bg-center bg-fallback" style="background-image: url('images/bvrit.jpg');" id="hero-bg">
         <div class="absolute inset-0 bg-black bg-opacity-50"></div>
         <div class="relative z-10 flex items-center justify-center min-h-screen px-4">
             <div class="text-center text-white max-w-5xl">
-                <h1 class="text-4xl md:text-5xl font-bold mb-4">Welcome to BV Raju Institute of Technology</h1>
+                <h1 class="text-4xl md:text-5xl font-bold mb-4" role="heading" aria-level="1">Welcome to BV Raju Institute of Technology</h1>
                 <p class="text-lg md:text-xl mb-2">A premier institution dedicated to excellence in engineering and technology education.</p>
                 <p class="text-lg md:text-xl mb-8">Empowering students with innovative learning and real-world skills for a brighter future.</p>
-                <a href="login.html" class="inline-block bg-blue-600 text-white px-8 py-3 rounded-full font-semibold text-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105 shadow-lg">Access Portal</a>
+                <a href="login.html" class="inline-block bg-blue-600 text-white px-8 py-3 rounded-full font-semibold text-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105 shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-300" aria-label="Access the login portal">Access Portal</a>
             </div>
         </div>
     </div>
+
+    <script>
+        // Reliability improvement: Handle background image loading errors
+        const heroBg = document.getElementById('hero-bg');
+        const img = new Image();
+        img.onload = function() {
+            // Image loaded successfully
+            console.log('Background image loaded successfully');
+        };
+        img.onerror = function() {
+            // Image failed to load, fallback is already applied via CSS
+            console.warn('Background image failed to load, using fallback gradient');
+            heroBg.style.backgroundImage = 'none';
+        };
+        img.src = 'images/bvrit.jpg';
+
+        // Reliability improvement: Add basic error handling for navigation
+        document.addEventListener('DOMContentLoaded', function() {
+            const accessLink = document.querySelector('a[href="login.html"]');
+            if (accessLink) {
+                accessLink.addEventListener('click', function(e) {
+                    // Could add loading state or validation here if needed
+                    console.log('Navigating to login page');
+                });
+            }
+        });
+
+        // Reliability improvement: Handle online/offline status
+        window.addEventListener('online', function() {
+            console.log('Connection restored');
+            // Could show notification or refresh data
+        });
+
+        window.addEventListener('offline', function() {
+            console.log('Connection lost');
+            // Could show offline message
+        });
+    </script>
 </body>
 </html>
